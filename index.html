@@ -509,16 +509,41 @@
         let visitCount = 0;
         let calculationCount = 0;
         
-        // Initialize analytics using in-memory storage
+        // Check if localStorage is available
+        function isLocalStorageAvailable() {
+            try {
+                localStorage.setItem('test', 'test');
+                localStorage.removeItem('test');
+                return true;
+            } catch (e) {
+                return false;
+            }
+        }
+        
+        // Initialize analytics
         function initAnalytics() {
-            visitCount++;
-            console.log('Visit #' + visitCount + ' recorded');
+            if (isLocalStorageAvailable()) {
+                // Increment visit count
+                visitCount = parseInt(localStorage.getItem('llbToolVisits') || '0') + 1;
+                localStorage.setItem('llbToolVisits', visitCount.toString());
+                
+                // Get calculation count
+                calculationCount = parseInt(localStorage.getItem('llbToolCalculations') || '0');
+                
+                // Log visit (you can replace this with your own analytics solution)
+                console.log(`Visit #${visitCount} recorded`);
+            }
         }
         
         // Log a calculation
         function logCalculation(studentData) {
-            calculationCount++;
-            console.log('Calculation #' + calculationCount + ' recorded', studentData);
+            if (isLocalStorageAvailable()) {
+                calculationCount++;
+                localStorage.setItem('llbToolCalculations', calculationCount.toString());
+                
+                // Log calculation (you can replace this with your own analytics solution)
+                console.log(`Calculation #${calculationCount} recorded`, studentData);
+            }
         }
         
         // Wait for the DOM to be fully loaded
@@ -527,10 +552,10 @@
             initAnalytics();
             
             // Get form element
-            var form = document.getElementById('rankForm');
+            const form = document.getElementById('rankForm');
             
             // Campus data with total seats - all three campuses
-            var campusData = {
+            const campusData = {
                 aligarh: {
                     name: "Aligarh Main Campus",
                     totalSeats: 120,
@@ -563,15 +588,15 @@
             // Function to calculate and display rank
             function calculateRank() {
                 // Reset note display
-                var resultNoteElement = document.getElementById('resultNote');
+                const resultNoteElement = document.getElementById('resultNote');
                 resultNoteElement.style.display = 'none';
                 resultNoteElement.classList.remove('result-below-cutoff');
                 resultNoteElement.textContent = '';
                 
                 // Get input values
-                var name = document.getElementById('name').value.trim();
-                var marksInput = document.getElementById('marks').value.trim();
-                var marks = parseFloat(marksInput);
+                const name = document.getElementById('name').value.trim();
+                const marksInput = document.getElementById('marks').value.trim();
+                const marks = parseFloat(marksInput);
                 
                 // Validate inputs
                 if (name === '') {
@@ -588,10 +613,10 @@
                 }
                 
                 // Calculate expected rank based on updated requirements
-                var expectedRank;
-                var waitingListRank = "Not in waiting list";
-                var statusMessage = "";
-                var campusEligibility = {};
+                let expectedRank;
+                let waitingListRank = "Not in waiting list";
+                let statusMessage = "";
+                let campusEligibility = {};
                 
                 if (marks < campusData.cutoff) {
                     // Less than cutoff marks
@@ -603,12 +628,12 @@
                     document.getElementById('campusEligibility').style.display = 'none';
                 } else if (marks >= 59) {
                     // For marks 59+ (as per updated requirements): Rank between 1-120
-                    var markFactor = marks - 59;
+                    const markFactor = marks - 59;
                     // Create a curve that gives ranks 1-120 for marks 59+
                     expectedRank = Math.max(1, Math.floor(120 - (markFactor * 10)));
                     
                     // Add slight randomization for natural distribution
-                    var randomFactor = Math.floor(Math.random() * 3);
+                    const randomFactor = Math.floor(Math.random() * 3);
                     expectedRank = Math.max(1, expectedRank - randomFactor);
                     
                     // Set campus eligibility
@@ -618,124 +643,66 @@
                             murshidabad: "Eligible",
                             malappuram: "Eligible"
                         };
-                        statusMessage = 'Congratulations! With ' + marks + ' marks (Rank ' + expectedRank + '), you have an excellent chance of admission in the Aligarh Main Campus.';
+                        statusMessage = `Congratulations! With ${marks} marks (Rank ${expectedRank}), you have an excellent chance of admission in the Aligarh Main Campus.`;
                     } else {
                         campusEligibility = {
                             aligarh: "Low Chance",
                             murshidabad: "High Chance",
                             malappuram: "High Chance"
                         };
-                        statusMessage = 'Congratulations! With ' + marks + ' marks (Rank ' + expectedRank + '), you have a good chance of admission in Murshidabad or Malappuram Centre.';
+                        statusMessage = `Congratulations! With ${marks} marks (Rank ${expectedRank}), you have a good chance of admission in Murshidabad or Malappuram Centre.`;
                     }
                     
                     resultNoteElement.style.display = 'block';
                     resultNoteElement.textContent = statusMessage;
-                } else if (marks >= 58 && marks < 59) {
-                    // For marks 58: around rank 170 (as per your new data)
-                    // Linear interpolation between 58 marks (170 rank) and 59 marks (120 rank)
-                    var baseRank = 170;
-                    var marksAbove58 = marks - 58;
-                    var reductionFactor = marksAbove58 * 50; // Reduce rank as marks increase towards 59
+                } else if (marks >= 50 && marks < 59) {
+                    // For marks 50-59: Waiting list ranks 1-150
+                    const waitingRange = 150;
+                    const markRange = 9; // From 50 to 59
+                    const markDifference = 59 - marks;
                     
-                    expectedRank = Math.max(120, Math.round(baseRank - reductionFactor));
-                    
-                    // Add slight randomization
-                    var randomFactor2 = Math.floor(Math.random() * 5) - 2;
-                    expectedRank = Math.max(120, expectedRank + randomFactor2);
-                    
-                    // This rank is beyond main selection but still in a decent position
-                    waitingListRank = expectedRank - campusData.totalSeats;
-                    
-                    // Set campus eligibility
-                    campusEligibility = {
-                        aligarh: "Not Eligible",
-                        murshidabad: "Waiting List - Good Chance", 
-                        malappuram: "Waiting List - Good Chance"
-                    };
-                    statusMessage = 'With ' + marks + ' marks (Rank ' + expectedRank + '), you are on the waiting list. You have good chances to get admission in Murshidabad or Malappuram Centre.';
-                    
-                    resultNoteElement.style.display = 'block';
-                    resultNoteElement.textContent = statusMessage;
-                } else if (marks >= 57 && marks < 58) {
-                    // For marks 57: Waiting list ranks around 87 (based on original data)
-                    // Linear interpolation between 57 marks (87 waiting) and 58 marks (170 rank)
-                    var baseWaitingRank = 87;
-                    var marksAbove57 = marks - 57;
-                    // Interpolate between rank 327 (240+87) and rank 170
-                    var startRank = 327; // 240 seats + 87
-                    var endRank = 170; 
-                    var reductionFactor2 = marksAbove57 * (startRank - endRank);
-                    
-                    expectedRank = Math.round(startRank - reductionFactor2);
+                    // Calculate waiting list position
+                    waitingListRank = Math.round(1 + (markDifference * (waitingRange / markRange)));
                     
                     // Add slight randomization
-                    var randomFactor3 = Math.floor(Math.random() * 10) - 5;
-                    expectedRank = Math.max(170, Math.min(327, expectedRank + randomFactor3));
+                    const randomFactor = Math.floor(Math.random() * 5) - 2;
+                    waitingListRank = Math.max(1, Math.min(150, waitingListRank + randomFactor));
                     
-                    waitingListRank = expectedRank - campusData.totalSeats;
-                    
-                    // Set campus eligibility
-                    campusEligibility = {
-                        aligarh: "Not Eligible",
-                        murshidabad: "Waiting List - Good Chance", 
-                        malappuram: "Waiting List - Good Chance"
-                    };
-                    statusMessage = 'With ' + marks + ' marks, you are on the waiting list (Rank ' + waitingListRank + '). You have good chances to get admission in Murshidabad or Malappuram Centre.';
-                    
-                    resultNoteElement.style.display = 'block';
-                    resultNoteElement.textContent = statusMessage;
-                } else if (marks >= 47 && marks < 57) {
-                    // Updated interpolation: 47 marks = 400 waiting rank, 57 marks = 87 waiting rank
-                    var marksRange = 57 - 47; // 10 marks difference
-                    var rankRange = 400 - 87; // 313 rank difference
-                    var marksAbove47 = marks - 47;
-                    
-                    // Calculate waiting list rank using linear interpolation
-                    var rawWaiting = 400 - (marksAbove47 * (rankRange / marksRange));
-                    var waitingRand = Math.floor(Math.random() * 11) - 5; // –5 to +5
-                    var provisionalWaiting = Math.round(rawWaiting + waitingRand);
-                    waitingListRank = Math.max(87, Math.min(400, provisionalWaiting));
-                    
+                    // Total rank is beyond main list
                     expectedRank = campusData.totalSeats + waitingListRank;
                     
                     // Set campus eligibility based on waiting list rank
-                    if (waitingListRank <= 150) {
+                    if (waitingListRank <= 70) {
                         campusEligibility = {
                             aligarh: "Not Eligible",
                             murshidabad: "Waiting List - Good Chance",
                             malappuram: "Waiting List - Good Chance"
                         };
-                        statusMessage = 'With ' + marks + ' marks, you are on the waiting list (Rank ' + waitingListRank + '). You have good chances to get admission in Murshidabad or Malappuram Centre.';
-                    } else if (waitingListRank <= 250) {
-                        campusEligibility = {
-                            aligarh: "Not Eligible",
-                            murshidabad: "Waiting List - Moderate Chance",
-                            malappuram: "Waiting List - Moderate Chance"
-                        };
-                        statusMessage = 'With ' + marks + ' marks, you are on the waiting list (Rank ' + waitingListRank + '). You have moderate chances to get admission in other campuses.';
+                        statusMessage = `With ${marks} marks, you are on the waiting list (Rank ${waitingListRank}). You have good chances to get admission in Murshidabad or Malappuram Centre.`;
                     } else {
                         campusEligibility = {
                             aligarh: "Not Eligible",
                             murshidabad: "Waiting List - Low Chance",
                             malappuram: "Waiting List - Low Chance"
                         };
-                        statusMessage = 'With ' + marks + ' marks, you are on the waiting list (Rank ' + waitingListRank + '). You may get admission in other campuses if seats remain vacant.';
+                        statusMessage = `With ${marks} marks, you are on the waiting list (Rank ${waitingListRank}). You may get admission in other campuses if seats remain vacant.`;
                     }
                     
                     resultNoteElement.style.display = 'block';
                     resultNoteElement.textContent = statusMessage;
-                } else if (marks >= campusData.cutoff && marks < 47) {
-                    // For marks between cutoff (30) and 47: Even higher waiting list ranks (400+)
-                    var waitingListStart = 400;
-                    var waitingRange = 200; // Ranks from 400 to 600
-                    var markRangeLow = 47 - campusData.cutoff; // 17 marks difference
-                    var markDifferenceLow = 47 - marks;
+                } else if (marks >= campusData.cutoff && marks < 50) {
+                    // For marks between cutoff and 50: Higher waiting list
+                    const waitingListStart = 150;
+                    const waitingRange = 100;
+                    const markRange = 50 - campusData.cutoff;
+                    const markDifference = 50 - marks;
                     
                     // Calculate waiting list position
-                    var rawWaiting2 = waitingListStart + (markDifferenceLow * (waitingRange / markRangeLow));
-                    var waitingRand2 = Math.floor(Math.random() * 21) - 10; // –10 to +10
-                    var provisionalWaiting2 = Math.round(rawWaiting2 + waitingRand2);
-                    waitingListRank = Math.max(waitingListStart, provisionalWaiting2);
+                    waitingListRank = Math.round(waitingListStart + (markDifference * (waitingRange / markRange)));
+                    
+                    // Add some controlled randomness
+                    const randomFactor = Math.floor(Math.random() * 11) - 5;
+                    waitingListRank = Math.max(waitingListStart, waitingListRank + randomFactor);
                     
                     expectedRank = campusData.totalSeats + waitingListRank;
                     
@@ -745,11 +712,14 @@
                         malappuram: "Waiting List - Very Low Chance"
                     };
                     
-                    statusMessage = 'With ' + marks + ' marks, you are on the waiting list (Rank ' + waitingListRank + '). Consider applying to self-finance seats or explore other options.';
+                    statusMessage = `With ${marks} marks, you are on the waiting list (Rank ${waitingListRank}). Consider applying to self-finance seats or explore other options.`;
                     resultNoteElement.style.display = 'block';
-                    resultNoteElement.textContent = statusMessage + " For self-finance seats, the cutoff may be 2-3 marks lower than regular seats.";
+                    resultNoteElement.textContent = statusMessage;
+                    
+                    // Add note about self-finance seats
+                    resultNoteElement.textContent += " For self-finance seats, the cutoff may be 2-3 marks lower than regular seats.";
                 } else {
-                    // (This case is redundant, since marks < cutoff was handled above)
+                    // For marks < cutoff (but this is already handled by the cutoff check)
                     expectedRank = 'Not Available';
                     statusMessage = 'It is almost impossible to get selected with this score.';
                     resultNoteElement.style.display = 'block';
@@ -762,53 +732,72 @@
                 document.getElementById('resultName').textContent = name;
                 document.getElementById('resultMarks').textContent = marks;
                 
-                // Show or hide waiting-list section
-                if (waitingListRank === "Not in waiting list") {
+                if (expectedRank === 'Not Available') {
+                    document.getElementById('resultRank').textContent = expectedRank;
                     document.getElementById('waitingListSection').style.display = 'none';
                 } else {
-                    document.getElementById('waitingListSection').style.display = 'flex';
-                    document.getElementById('resultWaitingRank').textContent = waitingListRank;
-                }
-                
-                // Show the expected rank (or "Not Available")
-                document.getElementById('resultRank').textContent = (expectedRank === 'Not Available') ? expectedRank : ('Rank: ' + expectedRank);
-                
-                // Populate seat info (total seats per campus)
-                var seatInfoContainer = document.getElementById('seatInfo');
-                seatInfoContainer.innerHTML = '';
-                for (var key in campusData) {
-                    if (campusData[key].name) {
-                        var div = document.createElement('div');
-                        div.classList.add('seat-item');
-                        div.innerHTML = campusData[key].name + '<span class="seat-count">' + campusData[key].totalSeats + '</span>';
-                        seatInfoContainer.appendChild(div);
+                    document.getElementById('resultRank').textContent = `Rank: ${expectedRank}`;
+                    
+                    // Show or hide waiting list section based on rank
+                    if (expectedRank <= campusData.totalSeats) {
+                        document.getElementById('waitingListSection').style.display = 'none';
+                    } else {
+                        document.getElementById('waitingListSection').style.display = 'flex';
+                        document.getElementById('resultWaitingRank').textContent = waitingListRank;
                     }
                 }
                 
-                // Populate campus eligibility details
-                var eligibilityContainer = document.getElementById('campusEligibilityDetails');
-                eligibilityContainer.innerHTML = '';
-                document.getElementById('campusEligibility').style.display = 'block';
-                for (var campusKey in campusEligibility) {
-                    var p = document.createElement('div');
-                    p.classList.add('campus-row');
-                    // If campusKey matches a key in campusData, use that campus's name
-                    var campusName = (campusData[campusKey] && campusData[campusKey].name) ? campusData[campusKey].name : campusKey;
-                    p.innerHTML = '<span class="campus-row-title">' + campusName + ':</span><span>' + campusEligibility[campusKey] + '</span>';
-                    eligibilityContainer.appendChild(p);
-                }
-                
-                // Finally, reveal the entire result container
                 document.getElementById('result').style.display = 'block';
                 
                 // Log this calculation for analytics
                 logCalculation({
                     name: name,
                     marks: marks,
-                    expectedRank: expectedRank,
-                    waitingListRank: waitingListRank,
-                    campusEligibility: JSON.stringify(campusEligibility)
+                    rank: expectedRank,
+                    waitingList: waitingListRank
                 });
+                
+                // Update seat information with appropriate status
+                const seatInfoDiv = document.getElementById('seatInfo');
+                let statusText = 'Not Eligible';
+                
+                if (expectedRank !== 'Not Available') {
+                    statusText = expectedRank <= campusData.totalSeats ? 'Selected' : 'Waiting List';
+                }
+                
+                seatInfoDiv.innerHTML = `
+                    <div class="seat-item total-seats">
+                        Total Seats (All Campuses)
+                        <span class="seat-count">${campusData.totalSeats}</span>
+                    </div>
+                    <div class="seat-item">
+                        Your Position
+                        <span class="seat-count">${statusText}</span>
+                    </div>
+                `;
+                
+                // Update campus eligibility information
+                if (expectedRank !== 'Not Available') {
+                    document.getElementById('campusEligibility').style.display = 'block';
+                    const campusDetailsDiv = document.getElementById('campusEligibilityDetails');
+                    
+                    if (Object.keys(campusEligibility).length > 0) {
+                        campusDetailsDiv.innerHTML = `
+                            <div class="campus-row">
+                                <span class="campus-row-title">Aligarh Main Campus (120 seats):</span>
+                                <span>${campusEligibility.aligarh || "Not Eligible"}</span>
+                            </div>
+                            <div class="campus-row">
+                                <span class="campus-row-title">Murshidabad Centre (60 seats):</span>
+                                <span>${campusEligibility.murshidabad || "Not Eligible"}</span>
+                            </div>
+                            <div class="campus-row">
+                                <span class="campus-row-title">Malappuram Centre (60 seats):</span>
+                                <span>${campusEligibility.malappuram || "Not Eligible"}</span>
+                            </div>
+                        `;
+                    }
+                }
             }
         });
     </script>
